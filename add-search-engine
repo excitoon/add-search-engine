@@ -1,0 +1,54 @@
+﻿#!/usr/bin/env python3
+
+import argparse
+import http.server
+import random
+import webbrowser
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('name', type=str, help='search engine name')
+parser.add_argument('url', type=str, help='URL (should contain {searchTerms})')
+args = parser.parse_args()
+
+host = "localhost"
+port = random.randrange(10000, 60000)
+
+class MyServer(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.endswith('.xml'):
+            self.send_response(200)
+            self.send_header("Content-type", "text/xml")
+            self.end_headers()
+            content = """<?xml version="1.0" encoding="iso-8859-1"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>%s</ShortName>
+  <Description>%s</Description>
+  <Url type="text/html" template="%s"/>
+</OpenSearchDescription>""" % (args.name, args.name, args.url)
+            self.wfile.write(bytes(content, 'utf-8'))
+        else:
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            content = """<html>
+    <head>
+        <link href="http://%s:%s/osd.xml" rel="search" title="%s" type="application/opensearchdescription+xml">
+    </head>
+    <body>
+        You can now add the search engine in Search Bar of your browser. Enjoy.
+    </body>
+</html>""" % (host, port, args.name)
+            self.wfile.write(bytes(content, 'utf-8'))
+
+server = http.server.HTTPServer((host, port), MyServer)
+print("Listening %s:%s..." % (host, port))
+
+webbrowser.open("http://%s:%s/" % (host, port))
+
+try:
+    server.serve_forever()
+except KeyboardInterrupt:
+    pass
+
+server.server_close()
